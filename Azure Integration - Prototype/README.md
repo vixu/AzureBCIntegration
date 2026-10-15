@@ -115,3 +115,30 @@ Sample files:
 10. **Telemetry**: events BCAFSI-0001 (process failure), BCAFSI-0002 (read failure) and BCAFSI-0003 (move failure) are sent to the publisher's Application Insights. They contain no file content.
 11. **Version**: app.json is unchanged (application/platform 29.0, runtime 18.0). The External File Storage methods used were checked on BCApps `releases/28.0`.
 12. **Previous prototype**: the earlier "Unite File Monitor" objects (IDs 50100–50101) are still in this app and don't depend on BCAFSI.
+
+## Outbound (prototype)
+
+New objects only. The inbound objects are unchanged.
+
+| Type           | ID    | Name                                                   |
+|----------------|-------|--------------------------------------------------------|
+| table          | 50115 | BCAFSI Outbound Staging (caption "Outbound BC Azure Integration") |
+| tableextension | 50115 | BCAFSI Outbound Setup (adds field 50115 "Outbound Folder" to the setup) |
+| codeunit       | 50115 | BCAFSI Outbound Mgt. (trigger subscriber + Process loop) |
+| codeunit       | 50116 | BCAFSI Outbound Export Entry (one entry, runs isolated with `Codeunit.Run`) |
+| page           | 50115 | BCAFSI Outbound Staging (list)                         |
+| pageextension  | 50115 | BCAFSI Outbound Setup (Outbound Folder field + Outbound Staging action) |
+| pageextension  | 50116 | BCAFSI Outbound Role Center (Outbound Staging link)    |
+| permissionset  | 50115 | BCAFSI Outbound (includes BCAFSI)                      |
+
+Flow:
+1. Inbound processing inserts a General Journal line with "BCAFSI Staging Entry No.".
+2. A subscriber on `Gen. Journal Line` OnAfterInsertEvent creates one outbound entry per line, status `Ready`.
+   It runs in the same transaction, so if the inbound file fails, no outbound entries are kept.
+3. On **Outbound BC Azure Integration**, choose **Process**. Each Ready or Error entry writes
+   `OUT_<DocumentNo>_<EntryNo>.txt` to the Outbound Folder and becomes `Processed`, or `Error` with the message.
+
+Setup: create the folder **Outbound** in the share, then set **Outbound Folder** on the integration setup line.
+
+File format (UTF-8, pipe separated, header + one row):
+`EntryNo|IntegrationCode|DocumentNo|PostingDate|AccountNo|Amount|Description|InboundEntryNo`

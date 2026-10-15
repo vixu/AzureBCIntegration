@@ -37,6 +37,7 @@ codeunit 50112 "BCAFSI Process Staging Entry"
         BCAFSIIntegrationSetup: Record "BCAFSI Integration Setup";
         TempCSVBuffer: Record "CSV Buffer" temporary;
         TempGenJournalLine: Record "Gen. Journal Line" temporary;
+        BCAFSIOutboundMgt: Codeunit "BCAFSI Outbound Mgt.";
         LinesCreated: Integer;
     begin
         if BCAFSIInboundStaging.Status <> BCAFSIInboundStaging.Status::Processing then
@@ -56,6 +57,9 @@ codeunit 50112 "BCAFSI Process Staging Entry"
         BCAFSIInboundStaging."No. of Lines Created" := LinesCreated;
         BCAFSIInboundStaging."Error Message" := '';
         BCAFSIInboundStaging.Modify(true);
+
+        // One outbound entry per inbound file, in the same transaction as the journal lines.
+        BCAFSIOutboundMgt.CreateOutboundEntry(BCAFSIInboundStaging);
     end;
 
     local procedure CheckJournal(BCAFSIIntegrationSetup: Record "BCAFSI Integration Setup")

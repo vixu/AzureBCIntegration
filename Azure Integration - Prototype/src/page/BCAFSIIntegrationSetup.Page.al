@@ -62,6 +62,15 @@ page 50110 "BCAFSI Integration Setup"
                         exit(LookupFolder(Rec."Error Folder", Text));
                     end;
                 }
+                field("Outbound Folder"; Rec."Outbound Folder")
+                {
+                    ToolTip = 'Specifies the folder, relative to the share root, that outbound confirmation files are created in.';
+
+                    trigger OnLookup(var Text: Text): Boolean
+                    begin
+                        exit(LookupFolder(Rec."Outbound Folder", Text));
+                    end;
+                }
                 field("File Name Filter"; Rec."File Name Filter")
                 {
                     ToolTip = 'Specifies a filter on the file names to fetch, for example @*.csv. Leave blank to fetch all files.';
@@ -169,6 +178,14 @@ page 50110 "BCAFSI Integration Setup"
                 RunPageLink = "Integration Code" = field("Code");
                 ToolTip = 'View the staging entries of this integration.';
             }
+            action(OutboundStaging)
+            {
+                Caption = 'Outbound Staging';
+                Image = List;
+                RunObject = page "BCAFSI Outbound Staging";
+                RunPageLink = "Integration Code" = field("Code");
+                ToolTip = 'View the outbound entries of this integration.';
+            }
             action(FileAccounts)
             {
                 Caption = 'External File Accounts';
@@ -206,6 +223,7 @@ page 50110 "BCAFSI Integration Setup"
                 Caption = 'Navigate';
 
                 actionref(Staging_Promoted; Staging) { }
+                actionref(OutboundStaging_Promoted; OutboundStaging) { }
                 actionref(FileAccounts_Promoted; FileAccounts) { }
                 actionref(JobQueueEntries_Promoted; JobQueueEntries) { }
             }

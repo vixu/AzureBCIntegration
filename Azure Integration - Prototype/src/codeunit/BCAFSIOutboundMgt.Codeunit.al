@@ -1,47 +1,56 @@
 namespace Node4.BCAzureFileSharedIntegration;
 
 using Microsoft.Finance.GeneralLedger.Journal;
+using System.Utilities;
 
 codeunit 50115 "BCAFSI Outbound Mgt."
 {
-    // Lets inbound users (and the Job Queue) create outbound entries without the outbound permission set.
-    Permissions = tabledata "BCAFSI Outbound Staging" = RI;
+    // OnRun exports one entry; ProcessSelected calls it with Codeunit.Run so one failure doesn't stop the others.
+    TableNo = "BCAFSI Outbound Staging";
+
+    trigger OnRun()
+    begin
+        ExportEntry(Rec);
+    end;
 
     var
         FailedCount: Integer;
         ProcessedCount: Integer;
         SkippedCount: Integer;
         SummaryMsg: Label '%1 file(s) created, %2 failed, %3 skipped.', Comment = '%1 = Processed, %2 = Failed, %3 = Skipped';
+        HeaderTxt: Label 'DocumentNo|PostingDate|AccountNo|Amount|JournalBatch|JournalLineNo', Locked = true;
 
-    // Trigger point: a journal line created by the inbound flow adds one Ready outbound entry.
-    // It runs in the same transaction as the journal line, so both commit or roll back together.
-    [EventSubscriber(ObjectType::Table, Database::"Gen. Journal Line", 'OnAfterInsertEvent', '', false, false)]
-    local procedure CreateOutboundOnGenJnlLineInsert(var Rec: Record "Gen. Journal Line"; RunTrigger: Boolean)
+    // Called by the inbound flow after the journal lines are created: one Ready entry per inbound file.
+    // The confirmation content is built now, so it doesn't depend on the journal lines still existing at export time.
+    procedure CreateOutboundEntry(BCAFSIInboundStaging: Record "BCAFSI Inbound Staging")
     var
-        BCAFSIInboundStaging: Record "BCAFSI Inbound Staging";
         BCAFSIOutboundStaging: Record "BCAFSI Outbound Staging";
+        GenJournalLine: Record "Gen. Journal Line";
+        ContentOutStream: OutStream;
+        ContentTextBuilder: TextBuilder;
     begin
-        if Rec.IsTemporary() then
-            exit;
-        if Rec."BCAFSI Staging Entry No." = 0 then
-            exit;
-
-        BCAFSIInboundStaging.SetLoadFields("Integration Code");
-        BCAFSIInboundStaging.Get(Rec."BCAFSI Staging Entry No.");
+        ContentTextBuilder.AppendLine(HeaderTxt);
+        GenJournalLine.SetRange("BCAFSI Staging Entry No.", BCAFSIInboundStaging."Entry No.");
+        if GenJournalLine.FindSet() then
+            repeat
+                ContentTextBuilder.AppendLine(
+                    GenJournalLine."Document No." + '|' +
+                    Format(GenJournalLine."Posting Date", 0, 9) + '|' +
+                    GenJournalLine."Account No." + '|' +
+                    Format(GenJournalLine.Amount, 0, 9) + '|' +
+                    GenJournalLine."Journal Batch Name" + '|' +
+                    Format(GenJournalLine."Line No."));
+            until GenJournalLine.Next() = 0;
 
         BCAFSIOutboundStaging.Init();
         BCAFSIOutboundStaging."Integration Code" := BCAFSIInboundStaging."Integration Code";
-        BCAFSIOutboundStaging."Document No." := Rec."Document No.";
+        BCAFSIOutboundStaging."Inbound Entry No." := BCAFSIInboundStaging."Entry No.";
+        BCAFSIOutboundStaging."Inbound File Name" := BCAFSIInboundStaging."File Name";
         BCAFSIOutboundStaging.Status := BCAFSIOutboundStaging.Status::Ready;
-        BCAFSIOutboundStaging."Posting Date" := Rec."Posting Date";
-        BCAFSIOutboundStaging."Account No." := Rec."Account No.";
-        BCAFSIOutboundStaging.Amount := Rec.Amount;
-        BCAFSIOutboundStaging.Description := Rec.Description;
-        BCAFSIOutboundStaging."Inbound Entry No." := Rec."BCAFSI Staging Entry No.";
-        BCAFSIOutboundStaging."Journal Template Name" := Rec."Journal Template Name";
-        BCAFSIOutboundStaging."Journal Batch Name" := Rec."Journal Batch Name";
-        BCAFSIOutboundStaging."Journal Line No." := Rec."Line No.";
+        BCAFSIOutboundStaging."No. of Lines" := BCAFSIInboundStaging."No. of Lines Created";
         BCAFSIOutboundStaging."Created At" := CurrentDateTime();
+        BCAFSIOutboundStaging."File Content".CreateOutStream(ContentOutStream, TextEncoding::UTF8);
+        ContentOutStream.WriteText(ContentTextBuilder.ToText());
         BCAFSIOutboundStaging.Insert(true);
     end;
 
@@ -73,22 +82,14 @@ codeunit 50115 "BCAFSI Outbound Mgt."
     var
         BCAFSIOutboundStaging: Record "BCAFSI Outbound Staging";
     begin
-        BCAFSIOutboundStaging.ReadIsolation(IsolationLevel::UpdLock);
         BCAFSIOutboundStaging.Get(EntryNo);
-        if not (BCAFSIOutboundStaging.Status in [BCAFSIOutboundStaging.Status::Ready, BCAFSIOutboundStaging.Status::Error]) then begin
-            SkippedCount += 1;
-            exit;
-        end;
-
-        BCAFSIOutboundStaging.Status := BCAFSIOutboundStaging.Status::Processing;
         BCAFSIOutboundStaging."Processed By" := CopyStr(UserId(), 1, MaxStrLen(BCAFSIOutboundStaging."Processed By"));
         BCAFSIOutboundStaging."Error Message" := '';
         BCAFSIOutboundStaging.Modify(true);
-        // Commit the Processing status so each entry runs in its own isolated transaction below.
         Commit();
 
         ClearLastError();
-        if Codeunit.Run(Codeunit::"BCAFSI Outbound Export Entry", BCAFSIOutboundStaging) then begin
+        if Codeunit.Run(Codeunit::"BCAFSI Outbound Mgt.", BCAFSIOutboundStaging) then begin
             ProcessedCount += 1;
             exit;
         end;
@@ -99,5 +100,35 @@ codeunit 50115 "BCAFSI Outbound Mgt."
         BCAFSIOutboundStaging.Modify(true);
         Commit();
         FailedCount += 1;
+    end;
+
+    local procedure ExportEntry(var BCAFSIOutboundStaging: Record "BCAFSI Outbound Staging")
+    var
+        BCAFSIIntegrationSetup: Record "BCAFSI Integration Setup";
+        BCAFSIFileStorageMgt: Codeunit "BCAFSI File Storage Mgt.";
+        TempBlob: Codeunit "Temp Blob";
+        FileName: Text;
+    begin
+        BCAFSIIntegrationSetup.Get(BCAFSIOutboundStaging."Integration Code");
+        BCAFSIIntegrationSetup.TestField("Outbound Folder");
+        BCAFSIFileStorageMgt.Initialize(BCAFSIIntegrationSetup);
+
+        BCAFSIOutboundStaging.CalcFields("File Content");
+        TempBlob.FromRecord(BCAFSIOutboundStaging, BCAFSIOutboundStaging.FieldNo("File Content"));
+        // e.g. OUT_12_BCAFSI_Sample_Valid.txt; the Entry No. keeps the name unique.
+        FileName := 'OUT_' + Format(BCAFSIOutboundStaging."Entry No.") + '_' + RemoveExtension(BCAFSIOutboundStaging."Inbound File Name") + '.txt';
+        BCAFSIFileStorageMgt.CreateFile(BCAFSIIntegrationSetup."Outbound Folder", FileName, TempBlob);
+
+        BCAFSIOutboundStaging.Status := BCAFSIOutboundStaging.Status::Processed;
+        BCAFSIOutboundStaging."File Name" := CopyStr(FileName, 1, MaxStrLen(BCAFSIOutboundStaging."File Name"));
+        BCAFSIOutboundStaging."Processed At" := CurrentDateTime();
+        BCAFSIOutboundStaging.Modify(true);
+    end;
+
+    local procedure RemoveExtension(FileName: Text): Text
+    begin
+        if FileName.LastIndexOf('.') = 0 then
+            exit(FileName);
+        exit(FileName.Substring(1, FileName.LastIndexOf('.') - 1));
     end;
 }

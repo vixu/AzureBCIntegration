@@ -27,54 +27,31 @@ page 50115 "BCAFSI Outbound Staging"
                 {
                     ToolTip = 'Specifies the integration that the entry belongs to.';
                 }
-                field("Document No."; Rec."Document No.")
+                field("Inbound Entry No."; Rec."Inbound Entry No.")
                 {
-                    ToolTip = 'Specifies the document number of the journal line.';
+                    ToolTip = 'Specifies the inbound staging entry that the journal lines were created from.';
+                }
+                field("Inbound File Name"; Rec."Inbound File Name")
+                {
+                    ToolTip = 'Specifies the inbound file that the journal lines were created from.';
                 }
                 field(Status; Rec.Status)
                 {
                     StyleExpr = StatusStyle;
-                    ToolTip = 'Specifies the export status: Ready, Processing, Processed or Error.';
+                    ToolTip = 'Specifies the export status: Ready, Processed or Error.';
                 }
                 field("Error Message"; Rec."Error Message")
                 {
                     Style = Unfavorable;
                     ToolTip = 'Specifies why the last export attempt failed.';
                 }
-                field("Posting Date"; Rec."Posting Date")
+                field("No. of Lines"; Rec."No. of Lines")
                 {
-                    ToolTip = 'Specifies the posting date of the journal line.';
+                    ToolTip = 'Specifies how many journal lines the confirmation file lists.';
                 }
-                field("Account No."; Rec."Account No.")
+                field("File Name"; Rec."File Name")
                 {
-                    ToolTip = 'Specifies the account number of the journal line.';
-                }
-                field(Amount; Rec.Amount)
-                {
-                    ToolTip = 'Specifies the amount of the journal line.';
-                }
-                field(Description; Rec.Description)
-                {
-                    ToolTip = 'Specifies the description of the journal line.';
-                }
-                field("Inbound Entry No."; Rec."Inbound Entry No.")
-                {
-                    ToolTip = 'Specifies the inbound staging entry that created the journal line.';
-                }
-                field("Journal Template Name"; Rec."Journal Template Name")
-                {
-                    ToolTip = 'Specifies the journal template of the line.';
-                    Visible = false;
-                }
-                field("Journal Batch Name"; Rec."Journal Batch Name")
-                {
-                    ToolTip = 'Specifies the journal batch of the line.';
-                    Visible = false;
-                }
-                field("Journal Line No."; Rec."Journal Line No.")
-                {
-                    ToolTip = 'Specifies the line number of the journal line.';
-                    Visible = false;
+                    ToolTip = 'Specifies the name of the file created in the outbound folder.';
                 }
                 field("Created At"; Rec."Created At")
                 {
@@ -88,15 +65,6 @@ page 50115 "BCAFSI Outbound Staging"
                 {
                     ToolTip = 'Specifies the user who last processed the entry.';
                 }
-                field("File Name"; Rec."File Name")
-                {
-                    ToolTip = 'Specifies the name of the file created in the outbound folder.';
-                }
-                field("File Path"; Rec."File Path")
-                {
-                    ToolTip = 'Specifies the full path of the file in the file share.';
-                    Visible = false;
-                }
             }
         }
     }
@@ -109,7 +77,7 @@ page 50115 "BCAFSI Outbound Staging"
             {
                 Caption = 'Process';
                 Image = ExportFile;
-                ToolTip = 'Create a text file in the outbound folder for each selected Ready or Error entry.';
+                ToolTip = 'Create the confirmation file in the outbound folder for each selected Ready or Error entry.';
 
                 trigger OnAction()
                 var
@@ -123,17 +91,6 @@ page 50115 "BCAFSI Outbound Staging"
                 end;
             }
         }
-        area(Navigation)
-        {
-            action(InboundEntry)
-            {
-                Caption = 'Inbound Entry';
-                Image = Import;
-                RunObject = page "BCAFSI Inbound Staging";
-                RunPageLink = "Entry No." = field("Inbound Entry No.");
-                ToolTip = 'View the inbound staging entry that the journal line was created from.';
-            }
-        }
         area(Promoted)
         {
             group(Category_Process)
@@ -141,7 +98,6 @@ page 50115 "BCAFSI Outbound Staging"
                 Caption = 'Process';
 
                 actionref(Process_Promoted; Process) { }
-                actionref(InboundEntry_Promoted; InboundEntry) { }
             }
         }
     }
@@ -153,8 +109,6 @@ page 50115 "BCAFSI Outbound Staging"
                 StatusStyle := Format(PageStyle::Favorable);
             Rec.Status::Error:
                 StatusStyle := Format(PageStyle::Unfavorable);
-            Rec.Status::Processing:
-                StatusStyle := Format(PageStyle::Ambiguous);
             else
                 StatusStyle := Format(PageStyle::Standard);
         end;

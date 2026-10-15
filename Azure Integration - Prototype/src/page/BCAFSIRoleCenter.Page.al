@@ -31,6 +31,13 @@ page 50114 "BCAFSI Role Center"
                 RunObject = page "BCAFSI Integration Setup";
                 ToolTip = 'Set up the BC Azure File Shared Integrations.';
             }
+            action(OutboundStaging)
+            {
+                ApplicationArea = All;
+                Caption = 'Outbound Staging';
+                RunObject = page "BCAFSI Outbound Staging";
+                ToolTip = 'View the confirmation files waiting to be sent to the Azure File Share.';
+            }
             action(InboundStaging)
             {
                 ApplicationArea = All;

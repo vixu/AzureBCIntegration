@@ -96,6 +96,16 @@ table 50110 "BCAFSI Integration Setup"
             Caption = 'File Name Filter';
             InitValue = '@*.csv';
         }
+        field(24; "Outbound Folder"; Text[250])
+        {
+            Caption = 'Outbound Folder';
+            InitValue = 'Outbound';
+
+            trigger OnValidate()
+            begin
+                "Outbound Folder" := NormalizeFolder("Outbound Folder");
+            end;
+        }
         field(30; "Journal Template Name"; Code[10])
         {
             Caption = 'Journal Template Name';

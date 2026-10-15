@@ -114,6 +114,21 @@ codeunit 50110 "BCAFSI File Storage Mgt."
         CopyStream(BlobOutStream, SourceInStream);
     end;
 
+    // Creates FileName in Folder and returns its path. Fails if the file already exists.
+    procedure CreateFile(Folder: Text; FileName: Text; var TempBlob: Codeunit "Temp Blob"): Text
+    var
+        ContentInStream: InStream;
+        FilePath: Text;
+        FileExistsErr: Label 'The file %1 already exists.', Comment = '%1 = File path';
+    begin
+        FilePath := ExternalFileStorage.CombinePath(Folder, FileName);
+        if ExternalFileStorage.FileExists(FilePath) then
+            Error(FileExistsErr, FilePath);
+        TempBlob.CreateInStream(ContentInStream);
+        ExternalFileStorage.CreateFile(FilePath, ContentInStream);
+        exit(FilePath);
+    end;
+
     // On a name clash in TargetFolder, a _yyyyMMddHHmmss (UTC) suffix is added instead of overwriting.
     [TryFunction]
     procedure TryMoveToFolder(SourcePath: Text; TargetFolder: Text; FileName: Text; var TargetPath: Text)
@@ -145,6 +160,7 @@ codeunit 50110 "BCAFSI File Storage Mgt."
         CheckFolder(BCAFSIIntegrationSetup."Inbound Folder", MissingFolders);
         CheckFolder(BCAFSIIntegrationSetup."Archive Folder", MissingFolders);
         CheckFolder(BCAFSIIntegrationSetup."Error Folder", MissingFolders);
+        CheckFolder(BCAFSIIntegrationSetup."Outbound Folder", MissingFolders);
     end;
 
     local procedure CheckFolder(Folder: Text; var MissingFolders: Text)

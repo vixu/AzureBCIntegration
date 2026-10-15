@@ -1,0 +1,4 @@
+DocumentNo,PostingDate,AccountType,AccountNo,Amount,BalAccountType,BalAccountNo,Description
+AFS-0001,2026-10-13,G/L Account,31010,125.50,G/L Account,78100,Office supplies
+AFS-0002,2026-10-13,G/L Account,31020,74.50,G/L Account,78100,Phone services
+AFS-0003,2026-10-13,G/L Account,85300,20.00,G/L Account,78100,Clearing account third party

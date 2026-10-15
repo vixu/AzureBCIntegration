@@ -1,0 +1,4 @@
+DocumentNo,PostingDate,AccountType,AccountNo,Amount,BalAccountType,BalAccountNo,Description
+AFS-0001,2026-10-13,G/L Account,6110,125.50,Bank Account,CHECKING,Membership fee batch 1
+AFS-0001,2026-10-13,G/L Account,6110,74.50,Bank Account,CHECKING,Membership fee batch 2
+AFS-0002,2026-10-13,G/L Account,8640,-20.00,G/L Account,2910,Rounding adjustment

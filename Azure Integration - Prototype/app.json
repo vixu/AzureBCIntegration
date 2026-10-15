@@ -1,0 +1,33 @@
+{
+  "id": "49b5c1f1-b50f-40a3-8413-e7195b6702d9",
+  "name": "UniteTheUnion - BC-Azure Integration Prototype",
+  "publisher": "Node4",
+  "version": "1.0.0.2",
+  "brief": "BC-Azure Integration Prototype",
+  "description": "BC-Azure Integration Prototype",
+  "privacyStatement": "",
+  "EULA": "",
+  "help": "",
+  "url": "",
+  "logo": "",
+  "application": "29.0.0.0",
+  "platform": "29.0.0.0",
+  "dependencies": [    
+    
+  ],
+  "idRanges": [
+    {
+      "from": 50100,
+      "to": 50149
+    }
+  ],
+  "resourceExposurePolicy": {
+    "allowDebugging": true,
+    "allowDownloadingSource": true,
+    "includeSourceInSymbolFile": true
+  },
+  "runtime": "18.0",
+  "features": [
+    "NoImplicitWith"
+  ]
+}
